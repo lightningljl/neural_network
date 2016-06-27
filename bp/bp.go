@@ -5,10 +5,11 @@ import(
     "math"
     "math/rand"
     "time"
+    "os"
 )
 
-//const first,second,third,alpha = 784,100,10,0.35 
-const first,second,third,alpha = 10,5,10,0.35 
+const first,second,third,alpha = 784,100,10,0.35 
+//const first,second,third,alpha = 10,5,10,0.35 
 
 var input [first]int
 var target [third]int
@@ -23,7 +24,8 @@ var b2[third]float64
 
 func main() {
     initialWeight()
-	fmt.Println(weight1)
+	//fmt.Println(weight1)
+	training()
 }
 
 //激活函数
@@ -57,5 +59,16 @@ func initialWeight() {
 
 //训练
 func training() {
-	
+	//读取训练文件
+	testFile, _ := os.Open("t10k-images.idx3-ubyte")
+	defer testFile.Close()
+	imageBuffer := make([]byte, first)
+    for{
+        n, _ := testFile.Read(imageBuffer)
+        if 0 == n { 
+        	break
+        }
+        fmt.Println(imageBuffer)
+        break
+    }
 }
