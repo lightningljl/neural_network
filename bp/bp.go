@@ -1,11 +1,15 @@
 package main
 
 import(
-    "fmt"
+    //"fmt"
     "math"
     "math/rand"
     "time"
     "os"
+    "image/color"
+    "image/png"  
+    "image"  
+    "strconv"  
 )
 
 const first,second,third,alpha = 784,100,10,0.35 
@@ -63,12 +67,46 @@ func training() {
 	testFile, _ := os.Open("t10k-images.idx3-ubyte")
 	defer testFile.Close()
 	imageBuffer := make([]byte, first)
+	number := 1
     for{
         n, _ := testFile.Read(imageBuffer)
         if 0 == n { 
         	break
         }
-        fmt.Println(imageBuffer)
-        break
-    }
+        bufferToImage( imageBuffer, strconv.Itoa( number ) )
+        number = number + 1
+        if number == 5 {
+        	break
+        }    }
+}
+
+func bufferToImage( imageBuffer []byte, imageName string ) {
+	dx,dy := 28,28
+	gray := image.NewGray(image.Rect(0, 0, dx, dy)) 
+	number := 0 
+	// for x := 0; x < dx; x++ {
+	// 	for y := 0; y < dy; y++ {
+	// 		gray.Set(x, y, color.Gray{imageBuffer[number]})
+	// 		number = number + 1
+	// 	}
+	// }
+
+	a := imageBuffer[0:392]
+	b := imageBuffer[391:783]
+	for x := 0; x < 14; x++ {
+		for y := 0; y < dy; y++ {
+			gray.Set(x, y, color.Gray{b[number]})
+			number = number + 1
+		}
+	}
+	number = 0
+	for x := 14; x < 28; x++ {
+		for y := 0; y < dy; y++ {
+			gray.Set(x, y, color.Gray{a[number]})
+			number = number + 1
+		}
+	}
+	newPath := "image/"+imageName+".png"  
+    newFile, _ := os.Create(newPath)  
+    png.Encode(newFile, gray)  
 }
