@@ -65,22 +65,50 @@ func initialWeight() {
 func training() {
 	//读取训练文件
 	testFile, _ := os.Open("t10k-images.idx3-ubyte")
+	labelFile,_ := os.Open("train-labels.idx1-ubyte")
 	defer testFile.Close()
 	imageBuffer := make([]byte, first)
+	labelBuffer := make([]byte, third)
 	number := 1
     for{
         n, _ := testFile.Read(imageBuffer)
         if 0 == n { 
         	break
         }
-        bufferToImage( imageBuffer, strconv.Itoa( number ) )
+        m, _ := labelFile.Read(labelBuffer)
+        //bufferToImage( imageBuffer, strconv.Itoa( number ) )
+        for i := 0; i < first; i++){
+	        if imageBuffer[i] < 128 {
+	        	input[i] = 0
+	        } else {
+	        	input[i] = 1
+	        }
+		}
+		key := labelBuffer[0]
+		for j := 0; j < third; j++ {
+			target[j] = 0
+		}
+        target[key] = 1
+
         number = number + 1
     }
 }
 
 //第一层训练
-func firstFloorTraining( imageBuffer []byte ) {
-    
+func firstFloorTraining( ) {
+	for i := 0; i < second; i++ {
+		sigma := 0.0
+		for j := 0; j < first; j++ {
+			sigma = sigma + input[j] * weight1[j][i];
+		}
+		sigma = sigma + b1[i]
+		output1[i] = segemod(sigma)
+	}
+}
+
+//第二层训练
+func secondFloorTraining() {
+	
 }
 
 func bufferToImage( imageBuffer []byte, imageName string ) {
