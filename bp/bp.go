@@ -90,12 +90,15 @@ func training() {
 		}
         target[key] = 1
 
+        firstFloorTraining()
+        secondFloorTraining()
+
         number = number + 1
     }
 }
 
 //第一层训练
-func firstFloorTraining( ) {
+func firstFloorTraining() {
 	for i := 0; i < second; i++ {
 		sigma := 0.0
 		for j := 0; j < first; j++ {
@@ -108,7 +111,14 @@ func firstFloorTraining( ) {
 
 //第二层训练
 func secondFloorTraining() {
-	
+	for i := 0; i < third; i++ {
+		sigma := 0.0
+		for j := 0; j < second; j++ {
+			sigma = sigma + output1[j] * weight1[j][i];
+		}
+		sigma = sigma + b2[i]
+		output2[i] = segemod(sigma)
+	}
 }
 
 func bufferToImage( imageBuffer []byte, imageName string ) {
