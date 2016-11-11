@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>创建房间</title>
+<script type="text/javascript" src="jquery-1.9.1.min.js"></script>
+<style type="text/css">
+.opreate{margin: 0 auto; width: 800px;}
+.hide{display: none;}
+.desk{width: 300px; height: 300px; border: 1px solid #717171; margin-top: 50px;}
+</style>
+</head>
+<body>
+<div class="opreate login hide">
+    <input type="button" value="登录" id="login"/>
+</div>
+<div class="opreate create hide">
+    <input type="button" value="创建房间" id="createHouse"/>
+    <input type="text"   value="" id="houseId" />
+    <input type="button" value="加入房间" id="enterHouse"/>
+</div>
+
+<div class="opreate play ">
+	<h3></h3>
+    <input type="button" value="发牌" id="play"/>
+    <div class="desk">
+        
+    </div>
+</div>
+</body>
+</html>
+<script type="text/javascript">
+ws = new WebSocket("ws://127.0.0.1:8080");
+ws.onopen = function() {
+    alert("连接成功");
+};
+ws.onmessage = function(e) {
+	var response = eval('(' + e.data + ')'); 
+	switch(response.FunctionId) {
+		//创建房间方法
+		case 1:
+            createHouse( response.Data );
+            break;
+	}
+    alert("收到服务端的消息：" + response.FunctionId);
+};
+$(function(){
+    //创建房间
+    $("#createHouse").click(function(){
+        ws.send('1|||{"PoepleNumber":4,"Dyj":1}');
+        
+    });
+    //加入房间
+    $("#enterHouse").click(function(){
+        var houseId = $("#houseId").val();
+        if ( houseId == "") {
+            alert("无效的放假号");
+            return false;
+        }
+        ws.send('2|||'+houseId);
+    });
+})
+
+//显示或者隐藏模块
+function show( ob ) {
+    $(".opreate").each(function(){
+    	if ( !$(this).hasClass('hide') ) {
+            $(this).addClass('hide');
+    	}
+    	ob.removeClass('hide');
+    });
+}
+
+//创建房间方法
+function createHouse( houseId ) {
+	$('.play h3').html("房间号:"+houseId);
+    show( $(".play") );
+}
+</script>
