@@ -84,7 +84,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		        err = c.WriteMessage(mt, responseMessage)
             //发牌
             case "3":
-                
+                responseMessage = Deal(userId, request[1])
 			case "broad":
 			    for key, _ := range group {
 				    res := "this is broadcast message "+userId
@@ -102,6 +102,40 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+/**
+ * 发牌
+ */
+ func Deal(string userId, string houseId) ([]byte) {
+    //获取用户信息，他是否在这个房间
+    message := Message{Result:0, FunctionId:3, Data:"获取用户信息失败"}
+    //检查用户是否在房间
+    key := "user_"+userId
+    user, errRedis := redisConn.Do("get", key)
+    if errRedis != nil {
+        log.Println("获取redis用户信息出错:", errRedis)
+        return FormatResult(message)
+    }
+    //如果用户存储的房间信息不匹配
+    if  user != houseId {
+        log.Println("您并未在改房间", userId)
+        return FormatResult(message)
+    }
+    //获取房间信息
+    houseInfo, result := HouseInfo(houseId)
+    if result == false {
+        message.Data = "房间信息不存在"
+        return FormatResult(message)
+    }
+    if len(houseInfo.User) != houseInfo.Mj.PoepleNumber {
+         message.Data = "人数不够"
+        return FormatResult(message)
+    }
+    //进行牌初始化
+    mj := Majiang{}
+    handsBrandList := mj.initHandsBrand()
+    houseInfo.HandsBrandList   = handsBrandList
+ }
 
 /**
  * 创建房间方法
@@ -254,17 +288,17 @@ func main() {
 
 
 func mj(w http.ResponseWriter, r *http.Request) {
-	aa,err := json.Marshal( brand )
-	if err != nil {
-        fmt.Fprintf(w, string(aa))
-    }
-    mj := Majiang{4,1}
-    handsBrandList := mj.initHandsBrand()
-    aa,err = json.Marshal( handsBrandList )
-    if err != nil {
-        fmt.Println(err.Error())
-    }
-	fmt.Fprintf(w, string(aa))
+	// aa,err := json.Marshal( brand )
+	// if err != nil {
+ //        fmt.Fprintf(w, string(aa))
+ //    }
+ //    mj := Majiang{4,1}
+ //    handsBrandList := mj.initHandsBrand()
+ //    aa,err = json.Marshal( handsBrandList )
+ //    if err != nil {
+ //        fmt.Println(err.Error())
+ //    }
+	// fmt.Fprintf(w, string(aa))
 }
 
 
@@ -278,7 +312,7 @@ type Majiang struct {
 
 //用户手牌数据结构
 type HandsBrand struct {
-	UserId int
+	UserId string
 	Brand [3][9]int
 	NetBrand [][2]int
 }
@@ -299,7 +333,7 @@ var brandEmpty = [3][9]int{
 var brandShuffle [][2]int
 
 //初始手牌化方法
-func (mj *Majiang) initHandsBrand() ( map[string]HandsBrand ) {
+func (mj *Majiang) initHandsBrand(userIdList []string) ( map[string]HandsBrand ) {
 	//将手牌转为1维
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 9; j++ {
@@ -330,7 +364,7 @@ func (mj *Majiang) initHandsBrand() ( map[string]HandsBrand ) {
         	number := value[1]
         	handsBrand[color][number] = handsBrand[color][number] + 1
         }
-    	userHandBrandList[strconv.Itoa(i)] = HandsBrand{i, handsBrand, brandTemp}
+    	userHandBrandList[strconv.Itoa(i)] = HandsBrand{userIdList[i], handsBrand, brandTemp}
     	start = start + 13
     }
     //将当前桌面上的牌一维清理
