@@ -106,7 +106,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 /**
  * 发牌
  */
- func Deal(string userId, string houseId) ([]byte) {
+ func Deal(string userId, string houseId) ([]byte, House house) {
     //获取用户信息，他是否在这个房间
     message := Message{Result:0, FunctionId:3, Data:"获取用户信息失败"}
     //检查用户是否在房间
@@ -134,7 +134,16 @@ func echo(w http.ResponseWriter, r *http.Request) {
     //进行牌初始化
     mj := Majiang{}
     handsBrandList := mj.initHandsBrand()
-    houseInfo.HandsBrandList   = handsBrandList
+    houseInfo.HandsBrandList = handsBrandList
+    //将数据存储如redis
+    store := Store(houseInfo.HouseId, houseInfo)
+    if !store {
+        message.Data = "房间存储失败"
+        return FormatResult(message)
+    }
+    message.Result = 1
+    message.Data = "房间加入成功"
+    return FormatResult(message), houseInfo
  }
 
 /**
@@ -315,6 +324,9 @@ type HandsBrand struct {
 	UserId string
 	Brand [3][9]int
 	NetBrand [][2]int
+    PlayBrand [][2]int    //已出牌
+    Touch [][2]int    //碰牌
+    Bar   [][2]int    //杠牌
 }
 
 //麻将一维数据结构，有顺序，代表筒，条，万
