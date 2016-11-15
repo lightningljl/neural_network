@@ -25,11 +25,10 @@ var upgrader = websocket.Upgrader{
     },
 }
 
-var group map[Client]bool
+var group map[string]Client
 
 //每个用户的结构体
 type Client struct {
-    userId string
 	conn *websocket.Conn
 }
 
@@ -55,8 +54,8 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userId := strconv.FormatInt(time.Now().Unix(), 10)
-	newClient := Client{ userId,  c}
-	group[newClient] = true
+	newClient := Client{c}
+	group[userId] = newClient
 
 	
 	var responseMessage []byte
@@ -84,7 +83,19 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		        err = c.WriteMessage(mt, responseMessage)
             //发牌
             case "3":
-                responseMessage = Deal(userId, request[1])
+                var houseInfo House
+                var status bool
+                responseMessage, houseInfo, status = Deal(userId, request[1])
+                err = c.WriteMessage(mt, responseMessage)
+                for _, handsBrand := range houseInfo.HandsBrandList {
+                    //通过用户的userId去获取到连接的信息
+                    client  := group[handsBrand.UserId]
+                    message := Message{Result:1, FunctionId:4, Data:handsBrand}
+                    w, _ := client.conn.NextWriter(websocket.TextMessage)
+                    //广播给每个用户牌的信息
+                    w.Write([]byte(message))
+                }
+                //给每个用户进行广播
 			case "broad":
 			    for key, _ := range group {
 				    res := "this is broadcast message "+userId
@@ -106,7 +117,9 @@ func echo(w http.ResponseWriter, r *http.Request) {
 /**
  * 发牌
  */
- func Deal(string userId, string houseId) ([]byte, House house) {
+ func Deal(string userId, string houseId) ([]byte, House house, status bool) {
+    var status bool
+    var houseInfo House
     //获取用户信息，他是否在这个房间
     message := Message{Result:0, FunctionId:3, Data:"获取用户信息失败"}
     //检查用户是否在房间
@@ -114,36 +127,36 @@ func echo(w http.ResponseWriter, r *http.Request) {
     user, errRedis := redisConn.Do("get", key)
     if errRedis != nil {
         log.Println("获取redis用户信息出错:", errRedis)
-        return FormatResult(message)
+        return FormatResult(message), houseInfo, false
     }
     //如果用户存储的房间信息不匹配
     if  user != houseId {
         log.Println("您并未在改房间", userId)
-        return FormatResult(message)
+        return FormatResult(message), houseInfo, false
     }
     //获取房间信息
-    houseInfo, result := HouseInfo(houseId)
-    if result == false {
+    houseInfo, status = HouseInfo(houseId)
+    if status == false {
         message.Data = "房间信息不存在"
-        return FormatResult(message)
+        return FormatResult(message), houseInfo, false
     }
     if len(houseInfo.User) != houseInfo.Mj.PoepleNumber {
          message.Data = "人数不够"
-        return FormatResult(message)
+        return FormatResult(message), houseInfo, false
     }
     //进行牌初始化
     mj := Majiang{}
-    handsBrandList := mj.initHandsBrand()
+    handsBrandList := mj.initHandsBrand( houseInfo.User )
     houseInfo.HandsBrandList = handsBrandList
     //将数据存储如redis
     store := Store(houseInfo.HouseId, houseInfo)
     if !store {
         message.Data = "房间存储失败"
-        return FormatResult(message)
+        return FormatResult(message), houseInfo, false
     }
     message.Result = 1
-    message.Data = "房间加入成功"
-    return FormatResult(message), houseInfo
+    message.Data = "发牌成功"
+    return FormatResult(message), houseInfo, false
  }
 
 /**
@@ -376,7 +389,7 @@ func (mj *Majiang) initHandsBrand(userIdList []string) ( map[string]HandsBrand )
         	number := value[1]
         	handsBrand[color][number] = handsBrand[color][number] + 1
         }
-    	userHandBrandList[strconv.Itoa(i)] = HandsBrand{userIdList[i], handsBrand, brandTemp}
+    	userHandBrandList[userIdList[i]] = HandsBrand{userIdList[i], handsBrand, brandTemp}
     	start = start + 13
     }
     //将当前桌面上的牌一维清理
