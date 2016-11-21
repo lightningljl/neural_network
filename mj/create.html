@@ -14,13 +14,13 @@
 <div class="opreate login hide">
     <input type="button" value="登录" id="login"/>
 </div>
-<div class="opreate create hide">
+<div class="opreate create ">
     <input type="button" value="创建房间" id="createHouse"/>
     <input type="text"   value="" id="houseId" />
     <input type="button" value="加入房间" id="enterHouse"/>
 </div>
 
-<div class="opreate play ">
+<div class="opreate play hide">
 	<h3></h3>
     <input type="button" value="发牌" id="play"/>
     <div class="desk">
@@ -41,6 +41,10 @@ ws.onmessage = function(e) {
 		case 1:
             createHouse( response.Data );
             break;
+        //加入房间方法
+        case 1:
+            enterHouse( response.Data );
+            break;
 	}
     alert("收到服务端的消息：" + response.FunctionId);
 };
@@ -48,7 +52,6 @@ $(function(){
     //创建房间
     $("#createHouse").click(function(){
         ws.send('1|||{"PoepleNumber":4,"Dyj":1}');
-        
     });
     //加入房间
     $("#enterHouse").click(function(){
@@ -74,6 +77,16 @@ function show( ob ) {
 //创建房间方法
 function createHouse( houseId ) {
 	$('.play h3').html("房间号:"+houseId);
+    show( $(".play") );
+}
+
+//创建房间方法
+function enterHouse( response ) {
+    if ( response.Result == 1 ) {
+        alert('加入房间成功');
+        
+    }
+    $('.play h3').html("房间号:"+houseId);
     show( $(".play") );
 }
 </script>

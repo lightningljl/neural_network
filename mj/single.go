@@ -66,7 +66,9 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("获取前段的数据:", err)
 			break
-		}
+		} else {
+            log.Println("获取前段的数据:", string(message))
+        }
 		request := strings.Split(string(message), "|||")
         if err != nil {
         	log.Println("解码出现错误:", err)
@@ -87,21 +89,20 @@ func echo(w http.ResponseWriter, r *http.Request) {
                 var status bool
                 responseMessage, houseInfo, status = Deal(userId, request[1])
                 err = c.WriteMessage(mt, responseMessage)
-                for _, handsBrand := range houseInfo.HandsBrandList {
-                    //通过用户的userId去获取到连接的信息
-                    client  := group[handsBrand.UserId]
-                    message := Message{Result:1, FunctionId:4, Data:handsBrand}
-                    w, _ := client.conn.NextWriter(websocket.TextMessage)
-                    //广播给每个用户牌的信息
-                    w.Write([]byte(message))
+                //如果发牌成功，则给每个用户广播信息
+                if status == true {
+                    for _, handsBrand := range houseInfo.HandsBrandList {
+                        //通过用户的userId去获取到连接的信息
+                        client  := group[handsBrand.UserId]
+                        message := Message{Result:1, FunctionId:4, Data:handsBrand}
+                        w, _ := client.conn.NextWriter(websocket.TextMessage)
+                        //广播给每个用户牌的信息
+                        w.Write([]byte(FormatResult(message)))
+                    }
                 }
-                //给每个用户进行广播
+                
 			case "broad":
-			    for key, _ := range group {
-				    res := "this is broadcast message "+userId
-					w, _ := key.conn.NextWriter(websocket.TextMessage)
-					w.Write([]byte(res))
-				}
+			   
 		    default:
 			    res := "ni hao "+userId
 		        err = c.WriteMessage(mt, []byte(res)) 
@@ -117,7 +118,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 /**
  * 发牌
  */
- func Deal(string userId, string houseId) ([]byte, House house, status bool) {
+ func Deal(userId string, houseId string) ([]byte, House, bool) {
     var status bool
     var houseInfo House
     //获取用户信息，他是否在这个房间
@@ -300,7 +301,7 @@ func main() {
     defer redisConn.Close()
 
     //初始化组
-    group = make(map[Client]bool)
+    group = make(map[string]Client)
 
 	http.HandleFunc("/", echo)
 	http.HandleFunc("/hello", hello)
@@ -389,7 +390,7 @@ func (mj *Majiang) initHandsBrand(userIdList []string) ( map[string]HandsBrand )
         	number := value[1]
         	handsBrand[color][number] = handsBrand[color][number] + 1
         }
-    	userHandBrandList[userIdList[i]] = HandsBrand{userIdList[i], handsBrand, brandTemp}
+    	userHandBrandList[userIdList[i]] = HandsBrand{UserId:userIdList[i], Brand:handsBrand, NetBrand:brandTemp}
     	start = start + 13
     }
     //将当前桌面上的牌一维清理
