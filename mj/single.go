@@ -47,6 +47,12 @@ type Message struct {
 	Data interface{}
 }
 
+//每次返回给前端的手牌数据接口
+type ReponseBrand struct {
+    Brand HandsBrand
+    Others []OthersHandsBrand
+}
+
 func echo(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -92,9 +98,16 @@ func echo(w http.ResponseWriter, r *http.Request) {
                 //如果发牌成功，则给每个用户广播信息
                 if status == true {
                     for _, handsBrand := range houseInfo.HandsBrandList {
+                        //还要拼接其他用户的出牌信息
+                        responseBrand := ReponseBrand{Brand:handsBrand}
+                        for _, tempBrand := houseInfo.HandsBrandList {
+                            if tempBrand.UserId != handsBrand.UserId {
+                                responseBrand.Others = append(responseBrand.Others, OthersHandsBrand{ UserId:tempBrand.UserId, PlayBrand:tempBrand.PlayBrand, Touch:tempBrand.Touch, Bar:tempBrand.Bar, Win:tempBrand.Win } )
+                            }
+                        }
                         //通过用户的userId去获取到连接的信息
                         client  := group[handsBrand.UserId]
-                        message := Message{Result:1, FunctionId:4, Data:handsBrand}
+                        message := Message{Result:1, FunctionId:4, Data:responseBrand}
                         w, _ := client.conn.NextWriter(websocket.TextMessage)
                         //广播给每个用户牌的信息
                         w.Write([]byte(FormatResult(message)))
@@ -341,6 +354,16 @@ type HandsBrand struct {
     PlayBrand [][2]int    //已出牌
     Touch [][2]int    //碰牌
     Bar   [][2]int    //杠牌
+    Win int
+}
+
+//其他用户手牌数据结构
+type OthersHandsBrand struct {
+    UserId int
+    PlayBrand [][2]int    //已出牌
+    Touch [][2]int    //碰牌
+    Bar   [][2]int    //杠牌
+    Win  int
 }
 
 //麻将一维数据结构，有顺序，代表筒，条，万
